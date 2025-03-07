@@ -250,10 +250,15 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 			return "", "", fmt.Errorf("failed to get project: %w", err)
 		}
 		projects[project.Name] = true
+		var helmSettings *appv1.ApplicationSourceHelm
+		if app.Spec.Source != nil && app.Spec.Source.Helm != nil {
+			helmSettings = app.Spec.Source.Helm
+		}
 		drySource := appv1.ApplicationSource{
 			RepoURL:        app.Spec.SourceHydrator.DrySource.RepoURL,
 			Path:           app.Spec.SourceHydrator.DrySource.Path,
 			TargetRevision: app.Spec.SourceHydrator.DrySource.TargetRevision,
+			Helm:           helmSettings,
 		}
 		if targetRevision == "" {
 			targetRevision = app.Spec.SourceHydrator.DrySource.TargetRevision

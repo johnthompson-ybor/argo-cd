@@ -42,8 +42,8 @@ func (s *Service) CommitHydratedManifests(_ context.Context, r *apiclient.Commit
 	// We validate for a nil repo in handleCommitRequest, but we need to check for a nil repo here to get the repo URL
 	// for metrics.
 	var repoURL string
-	if r.Repo != nil {
-		repoURL = r.Repo.Repo
+	if r.DestRepo != nil {
+		repoURL = r.DestRepo.Repo
 	}
 
 	var err error
@@ -78,11 +78,17 @@ func (s *Service) CommitHydratedManifests(_ context.Context, r *apiclient.Commit
 // target branch, clears the repository contents, writes the manifests to the repository, commits the changes, and pushes
 // the changes. It returns the output of the git commands and an error if one occurred.
 func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydratedManifestsRequest) (string, string, error) {
-	if r.Repo == nil {
-		return "", "", errors.New("repo is required")
+	if r.SourceRepo == nil {
+		return "", "", errors.New("source repo is required")
 	}
-	if r.Repo.Repo == "" {
-		return "", "", errors.New("repo URL is required")
+	if r.SourceRepo.Repo == "" {
+		return "", "", errors.New("source repo URL is required")
+	}
+	if r.DestRepo == nil {
+		return "", "", errors.New("destination repo is required")
+	}
+	if r.DestRepo.Repo == "" {
+		return "", "", errors.New("destination repo URL is required")
 	}
 	if r.TargetBranch == "" {
 		return "", "", errors.New("target branch is required")
@@ -91,7 +97,7 @@ func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydr
 		return "", "", errors.New("sync branch is required")
 	}
 
-	logCtx = logCtx.WithField("repo", r.Repo.Repo)
+	logCtx = logCtx.WithField("sourceRepo", r.SourceRepo.Repo).WithField("destRepo", r.DestRepo.Repo)
 	logCtx.Debug("Initiating git client")
 	gitClient, dirPath, cleanup, err := s.initGitClient(logCtx, r)
 	if err != nil {
@@ -119,7 +125,7 @@ func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydr
 	}
 
 	logCtx.Debug("Writing manifests")
-	err = WriteForPaths(dirPath, r.Repo.Repo, r.DrySha, r.Paths)
+	err = WriteForPaths(dirPath, r.SourceRepo.Repo, r.DrySha, r.Paths)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to write manifests: %w", err)
 	}
@@ -155,20 +161,20 @@ func (s *Service) initGitClient(logCtx *log.Entry, r *apiclient.CommitHydratedMa
 		}
 	}
 
-	gitClient, err := s.repoClientFactory.NewClient(r.Repo, dirPath)
+	gitClient, err := s.repoClientFactory.NewClient(r.SourceRepo, dirPath)
 	if err != nil {
 		cleanupOrLog()
 		return nil, "", nil, fmt.Errorf("failed to create git client: %w", err)
 	}
 
-	logCtx.Debugf("Initializing repo %s", r.Repo.Repo)
+	logCtx.Debugf("Initializing repo %s", r.SourceRepo.Repo)
 	err = gitClient.Init()
 	if err != nil {
 		cleanupOrLog()
 		return nil, "", nil, fmt.Errorf("failed to init git client: %w", err)
 	}
 
-	logCtx.Debugf("Fetching repo %s", r.Repo.Repo)
+	logCtx.Debugf("Fetching repo %s", r.SourceRepo.Repo)
 	err = gitClient.Fetch("")
 	if err != nil {
 		cleanupOrLog()
