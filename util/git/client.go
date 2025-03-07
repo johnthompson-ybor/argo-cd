@@ -89,6 +89,8 @@ type Client interface {
 	CheckoutOrNew(branch, base string, submoduleEnabled bool) (string, error)
 	// RemoveContents removes all files from the git repository.
 	RemoveContents() (string, error)
+	// RemovePath removes a specific path from the git repository.
+	RemovePath(path string) (string, error)
 	// CommitAndPush commits and pushes changes to the target branch.
 	CommitAndPush(branch, message string) (string, error)
 }
@@ -507,8 +509,8 @@ func (m *nativeGitClient) Checkout(revision string, submoduleEnabled bool) (stri
 		}
 	}
 	// NOTE
-	// The double “f” in the arguments is not a typo: the first “f” tells
-	// `git clean` to delete untracked files and directories, and the second “f”
+	// The double "f" in the arguments is not a typo: the first "f" tells
+	// `git clean` to delete untracked files and directories, and the second "f"
 	// tells it to clean untracked nested Git repositories (for example a
 	// submodule which has since been removed).
 	if out, err := m.runCmd("clean", "-ffdx"); err != nil {
@@ -1022,4 +1024,13 @@ func (m *nativeGitClient) runCmdOutput(cmd *exec.Cmd, ropts runOpts) (string, er
 		CaptureStderr:    ropts.CaptureStderr,
 	}
 	return executil.RunWithExecRunOpts(cmd, opts)
+}
+
+// RemovePath removes a specific path from the git repository.
+func (m *nativeGitClient) RemovePath(path string) (string, error) {
+	out, err := m.runCmd("rm", "-r", "--ignore-unmatch", path)
+	if err != nil {
+		return out, fmt.Errorf("failed to remove path: %w", err)
+	}
+	return out, nil
 }

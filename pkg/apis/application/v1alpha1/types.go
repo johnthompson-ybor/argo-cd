@@ -409,6 +409,7 @@ func (s SourceHydrator) GetDrySource() ApplicationSource {
 		RepoURL:        s.DrySource.RepoURL,
 		Path:           s.DrySource.Path,
 		TargetRevision: s.DrySource.TargetRevision,
+		Chart:          s.DrySource.Chart,
 	}
 }
 
@@ -424,7 +425,9 @@ type DrySource struct {
 	// TargetRevision defines the revision of the source to hydrate
 	TargetRevision string `json:"targetRevision" protobuf:"bytes,2,name=targetRevision"`
 	// Path is a directory path within the Git repository where the manifests are located
-	Path string `json:"path" protobuf:"bytes,3,name=path"`
+	Path string `json:"path,omitempty" protobuf:"bytes,3,name=path"`
+	// Chart is the name of the Helm chart to use for the application
+	Chart string `json:"chart,omitempty" protobuf:"bytes,4,opt,name=chart"`
 }
 
 // SyncSource specifies a location from which hydrated manifests may be synced. RepoURL is assumed based on the
@@ -443,9 +446,9 @@ type HydrateTo struct {
 	// TargetBranch is the branch to which hydrated manifests should be committed
 	TargetBranch string `json:"targetBranch" protobuf:"bytes,1,name=targetBranch"`
 	// RepoURL is the URL to the git repository where hydrated manifests should be pushed
-	RepoURL *string `json:"repoURL" protobuf:"bytes,2,name=repoURL"`
+	RepoURL string `json:"repoURL,omitempty" protobuf:"bytes,2,name=repoURL"`
 	// Path is the directory path within the Git repository where hydrated manifests should be committed
-	Path *string `json:"path,omitempty" protobuf:"bytes,3,opt,name=path"`
+	Path string `json:"path,omitempty" protobuf:"bytes,3,opt,name=path"`
 }
 
 // DeepEquals returns true if the HydrateTo is deeply equal to the given HydrateTo.
@@ -454,11 +457,11 @@ func (in *HydrateTo) DeepEquals(to *HydrateTo) bool {
 		return to == nil
 	}
 	if to == nil {
-		// We already know in is not nil.
 		return false
 	}
-	// Compare de-referenced structs.
-	return *in == *to
+	return in.TargetBranch == to.TargetBranch &&
+		in.RepoURL == to.RepoURL &&
+		in.Path == to.Path
 }
 
 // RefreshType specifies how to refresh the sources of a given application

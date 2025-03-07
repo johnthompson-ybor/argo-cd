@@ -19,10 +19,6 @@ import (
 // also writes a root-level hydrator.metadata file containing the repo URL and dry SHA.
 func WriteForPaths(rootPath string, repoUrl string, drySha string, paths []*apiclient.PathDetails) error { //nolint:revive //FIXME(var-naming)
 	// Write the top-level readme.
-	err := writeMetadata(rootPath, hydratorMetadataFile{DrySHA: drySha, RepoURL: repoUrl})
-	if err != nil {
-		return fmt.Errorf("failed to write top-level hydrator metadata: %w", err)
-	}
 
 	for _, p := range paths {
 		hydratePath := p.Path
@@ -31,7 +27,7 @@ func WriteForPaths(rootPath string, repoUrl string, drySha string, paths []*apic
 		}
 
 		var fullHydratePath string
-		fullHydratePath, err = files.SecureMkdirAll(rootPath, hydratePath, os.ModePerm)
+		fullHydratePath, err := files.SecureMkdirAll(rootPath, hydratePath, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("failed to create path: %w", err)
 		}

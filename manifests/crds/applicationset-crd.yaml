@@ -387,6 +387,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -394,7 +396,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -1071,6 +1072,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -1078,7 +1081,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -1755,6 +1757,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -1762,7 +1766,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -2419,6 +2422,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -2426,7 +2431,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -3107,6 +3111,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -3114,7 +3120,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -3791,6 +3796,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -3798,7 +3805,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -4475,6 +4481,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -4482,7 +4490,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -5139,6 +5146,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -5146,7 +5155,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -5811,6 +5819,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -5818,7 +5828,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -6702,6 +6711,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -6709,7 +6720,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -7588,6 +7598,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -7595,7 +7607,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -8268,6 +8279,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -8275,7 +8288,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -8958,6 +8970,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -8965,7 +8979,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -9642,6 +9655,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -9649,7 +9664,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -10326,6 +10340,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -10333,7 +10349,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -10990,6 +11005,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -10997,7 +11014,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -11662,6 +11678,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -11669,7 +11687,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -12553,6 +12570,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -12560,7 +12579,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -13439,6 +13457,8 @@ spec:
                                             properties:
                                               drySource:
                                                 properties:
+                                                  chart:
+                                                    type: string
                                                   path:
                                                     type: string
                                                   repoURL:
@@ -13446,7 +13466,6 @@ spec:
                                                   targetRevision:
                                                     type: string
                                                 required:
-                                                - path
                                                 - repoURL
                                                 - targetRevision
                                                 type: object
@@ -14123,6 +14142,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -14130,7 +14151,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -14794,6 +14814,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -14801,7 +14823,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -15685,6 +15706,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -15692,7 +15715,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -16571,6 +16593,8 @@ spec:
                                   properties:
                                     drySource:
                                       properties:
+                                        chart:
+                                          type: string
                                         path:
                                           type: string
                                         repoURL:
@@ -16578,7 +16602,6 @@ spec:
                                         targetRevision:
                                           type: string
                                       required:
-                                      - path
                                       - repoURL
                                       - targetRevision
                                       type: object
@@ -17326,6 +17349,8 @@ spec:
                         properties:
                           drySource:
                             properties:
+                              chart:
+                                type: string
                               path:
                                 type: string
                               repoURL:
@@ -17333,7 +17358,6 @@ spec:
                               targetRevision:
                                 type: string
                             required:
-                            - path
                             - repoURL
                             - targetRevision
                             type: object

@@ -21,25 +21,24 @@ import (
 // hydrator from having direct access to the app controller, and 2) it allows for easy mocking of dependencies in tests.
 // If you add something here, be sure that it is something the app controller needs to provide to the hydrator.
 type Dependencies interface {
-	// TODO: determine if we actually need to get the app, or if all the stuff we need the app for is done already on
-	//       the app controller side.
 	GetProcessableAppProj(app *appv1.Application) (*appv1.AppProject, error)
 	GetProcessableApps() (*appv1.ApplicationList, error)
 	GetRepoObjs(app *appv1.Application, source appv1.ApplicationSource, revision string, project *appv1.AppProject) ([]*unstructured.Unstructured, *apiclient.ManifestResponse, error)
 	GetWriteCredentials(ctx context.Context, repoURL string, project string) (*appv1.Repository, error)
 	RequestAppRefresh(appName string, appNamespace string) error
-	// TODO: only allow access to the hydrator status
 	PersistAppHydratorStatus(orig *appv1.Application, newStatus *appv1.SourceHydratorStatus)
 	AddHydrationQueueItem(key HydrationQueueKey)
 	GetRepositoryCredentials(ctx context.Context, repoURL string) (*appv1.Repository, error)
 }
 
+// Hydrator manages the hydration process for applications.
 type Hydrator struct {
 	dependencies         Dependencies
 	statusRefreshTimeout time.Duration
 	commitClientset      commitclient.Clientset
 }
 
+// NewHydrator creates a new Hydrator instance with the given dependencies and configuration.
 func NewHydrator(dependencies Dependencies, statusRefreshTimeout time.Duration, commitClientset commitclient.Clientset) *Hydrator {
 	return &Hydrator{
 		dependencies:         dependencies,
@@ -48,6 +47,7 @@ func NewHydrator(dependencies Dependencies, statusRefreshTimeout time.Duration, 
 	}
 }
 
+// ProcessAppHydrateQueueItem processes a single application hydration queue item.
 func (h *Hydrator) ProcessAppHydrateQueueItem(origApp *appv1.Application) {
 	origApp = origApp.DeepCopy()
 	app := origApp.DeepCopy()
@@ -60,7 +60,6 @@ func (h *Hydrator) ProcessAppHydrateQueueItem(origApp *appv1.Application) {
 
 	logCtx.Debug("Processing app hydrate queue item")
 
-	// TODO: don't reuse statusRefreshTimeout. Create a new timeout for hydration.
 	needsHydration, reason := appNeedsHydration(origApp, h.statusRefreshTimeout)
 	if !needsHydration {
 		return
@@ -81,19 +80,7 @@ func (h *Hydrator) ProcessAppHydrateQueueItem(origApp *appv1.Application) {
 	logCtx.Debug("Successfully processed app hydrate queue item")
 }
 
-func getHydrationQueueKey(app *appv1.Application) HydrationQueueKey {
-	destinationBranch := app.Spec.SourceHydrator.SyncSource.TargetBranch
-	if app.Spec.SourceHydrator.HydrateTo != nil {
-		destinationBranch = app.Spec.SourceHydrator.HydrateTo.TargetBranch
-	}
-	key := HydrationQueueKey{
-		SourceRepoURL:        app.Spec.SourceHydrator.DrySource.RepoURL,
-		SourceTargetRevision: app.Spec.SourceHydrator.DrySource.TargetRevision,
-		DestinationBranch:    destinationBranch,
-	}
-	return key
-}
-
+// HydrationQueueKey uniquely identifies a hydration operation in the queue.
 type HydrationQueueKey struct {
 	SourceRepoURL        string
 	SourceTargetRevision string
@@ -104,10 +91,12 @@ type HydrationQueueKey struct {
 type uniqueHydrationDestination struct {
 	sourceRepoURL        string
 	sourceTargetRevision string
+	destinationRepoURL   string
 	destinationBranch    string
 	destinationPath      string
 }
 
+// ProcessHydrationQueueItem processes a hydration queue item and returns whether to process the next item.
 func (h *Hydrator) ProcessHydrationQueueItem(hydrationKey HydrationQueueKey) (processNext bool) {
 	logCtx := log.WithFields(log.Fields{
 		"sourceRepoURL":        hydrationKey.SourceRepoURL,
@@ -115,10 +104,15 @@ func (h *Hydrator) ProcessHydrationQueueItem(hydrationKey HydrationQueueKey) (pr
 		"destinationBranch":    hydrationKey.DestinationBranch,
 	})
 
+	logCtx.Debug("Processing hydration queue item")
+
 	relevantApps, drySHA, hydratedSHA, err := h.hydrateAppsLatestCommit(logCtx, hydrationKey)
 	if drySHA != "" {
 		logCtx = logCtx.WithField("drySHA", drySHA)
 	}
+
+	logCtx.Debug("Hydrated apps")
+
 	if err != nil {
 		logCtx.WithField("appCount", len(relevantApps)).WithError(err).Error("Failed to hydrate apps")
 		for _, app := range relevantApps {
@@ -126,9 +120,7 @@ func (h *Hydrator) ProcessHydrationQueueItem(hydrationKey HydrationQueueKey) (pr
 			app.Status.SourceHydrator.CurrentOperation.Phase = appv1.HydrateOperationPhaseFailed
 			failedAt := metav1.Now()
 			app.Status.SourceHydrator.CurrentOperation.FinishedAt = &failedAt
-			app.Status.SourceHydrator.CurrentOperation.Message = fmt.Sprintf("Failed to hydrate revision %q: %v", drySHA, err.Error())
-			// We may or may not have gotten far enough in the hydration process to get a non-empty SHA, but set it just
-			// in case we did.
+			app.Status.SourceHydrator.CurrentOperation.Message = fmt.Sprintf("Failed to hydrate revision %q: %v", drySHA, err)
 			app.Status.SourceHydrator.CurrentOperation.DrySHA = drySHA
 			h.dependencies.PersistAppHydratorStatus(origApp, &app.Status.SourceHydrator)
 			logCtx = logCtx.WithField("app", app.QualifiedName())
@@ -136,6 +128,7 @@ func (h *Hydrator) ProcessHydrationQueueItem(hydrationKey HydrationQueueKey) (pr
 		}
 		return
 	}
+
 	logCtx.WithField("appCount", len(relevantApps)).Debug("Successfully hydrated apps")
 	finishedAt := metav1.Now()
 	for _, app := range relevantApps {
@@ -156,13 +149,24 @@ func (h *Hydrator) ProcessHydrationQueueItem(hydrationKey HydrationQueueKey) (pr
 			SourceHydrator: app.Status.SourceHydrator.CurrentOperation.SourceHydrator,
 		}
 		h.dependencies.PersistAppHydratorStatus(origApp, &app.Status.SourceHydrator)
-		// Request a refresh since we pushed a new commit.
-		err := h.dependencies.RequestAppRefresh(app.Name, app.Namespace)
-		if err != nil {
+		if err := h.dependencies.RequestAppRefresh(app.Name, app.Namespace); err != nil {
 			logCtx.WithField("app", app.QualifiedName()).WithError(err).Error("Failed to request app refresh after hydration")
 		}
 	}
 	return
+}
+
+func getHydrationQueueKey(app *appv1.Application) HydrationQueueKey {
+	destinationBranch := app.Spec.SourceHydrator.SyncSource.TargetBranch
+	if app.Spec.SourceHydrator.HydrateTo != nil {
+		destinationBranch = app.Spec.SourceHydrator.HydrateTo.TargetBranch
+	}
+	key := HydrationQueueKey{
+		SourceRepoURL:        app.Spec.SourceHydrator.DrySource.RepoURL,
+		SourceTargetRevision: app.Spec.SourceHydrator.DrySource.TargetRevision,
+		DestinationBranch:    destinationBranch,
+	}
+	return key
 }
 
 func (h *Hydrator) hydrateAppsLatestCommit(logCtx *log.Entry, hydrationKey HydrationQueueKey) ([]*appv1.Application, string, string, error) {
@@ -170,7 +174,7 @@ func (h *Hydrator) hydrateAppsLatestCommit(logCtx *log.Entry, hydrationKey Hydra
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to get relevant apps for hydration: %w", err)
 	}
-
+	logCtx.Debug("entering hydrate")
 	dryRevision, hydratedRevision, err := h.hydrate(logCtx, relevantApps)
 	if err != nil {
 		return relevantApps, dryRevision, "", fmt.Errorf("failed to hydrate apps: %w", err)
@@ -197,6 +201,11 @@ func (h *Hydrator) getRelevantAppsForHydration(logCtx *log.Entry, hydrationKey H
 			app.Spec.SourceHydrator.DrySource.TargetRevision != hydrationKey.SourceTargetRevision {
 			continue
 		}
+		destRepoURL := app.Spec.SourceHydrator.DrySource.RepoURL
+		if app.Spec.SourceHydrator.HydrateTo != nil && app.Spec.SourceHydrator.HydrateTo.RepoURL != "" {
+			destRepoURL = app.Spec.SourceHydrator.HydrateTo.RepoURL
+		}
+
 		destinationBranch := app.Spec.SourceHydrator.SyncSource.TargetBranch
 		if app.Spec.SourceHydrator.HydrateTo != nil {
 			destinationBranch = app.Spec.SourceHydrator.HydrateTo.TargetBranch
@@ -220,6 +229,7 @@ func (h *Hydrator) getRelevantAppsForHydration(logCtx *log.Entry, hydrationKey H
 		uniqueDestinationKey := uniqueHydrationDestination{
 			sourceRepoURL:        app.Spec.SourceHydrator.DrySource.RepoURL,
 			sourceTargetRevision: app.Spec.SourceHydrator.DrySource.TargetRevision,
+			destinationRepoURL:   destRepoURL,
 			destinationBranch:    destinationBranch,
 			destinationPath:      app.Spec.SourceHydrator.SyncSource.Path,
 		}
@@ -242,14 +252,15 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 	sourceRepoURL := apps[0].Spec.SourceHydrator.DrySource.RepoURL
 	// Destination repo is HydrateTo.RepoURL if specified, otherwise same as source
 	destRepoURL := sourceRepoURL
-	if apps[0].Spec.SourceHydrator.HydrateTo != nil && apps[0].Spec.SourceHydrator.HydrateTo.RepoURL != nil && *apps[0].Spec.SourceHydrator.HydrateTo.RepoURL != "" {
-		destRepoURL = *apps[0].Spec.SourceHydrator.HydrateTo.RepoURL
+	if apps[0].Spec.SourceHydrator.HydrateTo != nil && apps[0].Spec.SourceHydrator.HydrateTo.RepoURL != "" {
+		destRepoURL = apps[0].Spec.SourceHydrator.HydrateTo.RepoURL
 	}
 	syncBranch := apps[0].Spec.SourceHydrator.SyncSource.TargetBranch
 	targetBranch := apps[0].Spec.GetHydrateToSource().TargetRevision
 	var paths []*commitclient.PathDetails
 	projects := make(map[string]bool, len(apps))
 	var targetRevision string
+
 	// TODO: parallelize this loop
 	for _, app := range apps {
 		project, err := h.dependencies.GetProcessableAppProj(app)
@@ -261,11 +272,22 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 		if app.Spec.Source != nil && app.Spec.Source.Helm != nil {
 			helmSettings = app.Spec.Source.Helm
 		}
+		var kustomizeSettings *appv1.ApplicationSourceKustomize
+		if app.Spec.Source != nil && app.Spec.Source.Kustomize != nil {
+			kustomizeSettings = app.Spec.Source.Kustomize
+		}
 		drySource := appv1.ApplicationSource{
 			RepoURL:        app.Spec.SourceHydrator.DrySource.RepoURL,
 			Path:           app.Spec.SourceHydrator.DrySource.Path,
 			TargetRevision: app.Spec.SourceHydrator.DrySource.TargetRevision,
+			Chart:          app.Spec.SourceHydrator.DrySource.Chart,
 			Helm:           helmSettings,
+			Kustomize:      kustomizeSettings,
+		}
+		if app.Spec.SourceHydrator.DrySource.Chart != "" {
+			drySource.Chart = app.Spec.SourceHydrator.DrySource.Chart
+		} else if app.Spec.Source != nil {
+			drySource.Chart = app.Spec.Source.Chart
 		}
 		if targetRevision == "" {
 			targetRevision = app.Spec.SourceHydrator.DrySource.TargetRevision
@@ -293,8 +315,8 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 
 		// Determine which path to use based on HydrateTo configuration
 		path := app.Spec.SourceHydrator.SyncSource.Path
-		if app.Spec.SourceHydrator.HydrateTo != nil && app.Spec.SourceHydrator.HydrateTo.Path != nil && *app.Spec.SourceHydrator.HydrateTo.Path != "" {
-			path = *app.Spec.SourceHydrator.HydrateTo.Path
+		if app.Spec.SourceHydrator.HydrateTo != nil && app.Spec.SourceHydrator.HydrateTo.Path != "" {
+			path = app.Spec.SourceHydrator.HydrateTo.Path
 		}
 
 		paths = append(paths, &commitclient.PathDetails{
@@ -357,6 +379,7 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 	if err != nil {
 		return targetRevision, "", fmt.Errorf("failed to commit hydrated manifests: %w", err)
 	}
+	logCtx.Debug("exiting hydrate")
 	return targetRevision, resp.HydratedSha, nil
 }
 
@@ -377,7 +400,9 @@ func appNeedsHydration(app *appv1.Application, statusHydrateTimeout time.Duratio
 	case app.Status.SourceHydrator.CurrentOperation == nil:
 		return true, "no previous hydrate operation"
 	case !app.Spec.SourceHydrator.DeepEquals(app.Status.SourceHydrator.CurrentOperation.SourceHydrator):
-		return true, "spec.sourceHydrator differs"
+		specJSON, _ := json.Marshal(app.Spec.SourceHydrator)
+		statusJSON, _ := json.Marshal(app.Status.SourceHydrator.CurrentOperation.SourceHydrator)
+		return true, fmt.Sprintf("spec.sourceHydrator differs - spec: %s, status: %s", string(specJSON), string(statusJSON))
 	case app.Status.SourceHydrator.CurrentOperation.Phase == appv1.HydrateOperationPhaseFailed && metav1.Now().Sub(app.Status.SourceHydrator.CurrentOperation.FinishedAt.Time) > 2*time.Minute:
 		return true, "previous hydrate operation failed more than 2 minutes ago"
 	case hydratedAt == nil || hydratedAt.Add(statusHydrateTimeout).Before(time.Now().UTC()):

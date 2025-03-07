@@ -80,15 +80,12 @@ func (s *Service) CommitHydratedManifests(_ context.Context, r *apiclient.Commit
 	}, nil
 }
 
-// handleCommitRequest handles the commit request. It clones the repository, checks out the sync branch, checks out the
-// target branch, clears the repository contents, writes the manifests to the repository, commits the changes, and pushes
-// the changes. It returns the output of the git commands and an error if one occurred.
+// handleCommitRequest handles the commit request. It initializes the destination repository,
+// writes the manifests, commits the changes, and pushes them. It returns the output of the git
+// commands and an error if one occurred.
 func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydratedManifestsRequest) (string, string, error) {
-	if r.SourceRepo == nil {
-		return "", "", errors.New("source repo is required")
-	}
-	if r.SourceRepo.Repo == "" {
-		return "", "", errors.New("source repo URL is required")
+	if r.SourceRepo == nil || r.SourceRepo.Repo == "" {
+		return "", "", errors.New("source repo URL is required for metadata")
 	}
 	if r.DestRepo == nil {
 		return "", "", errors.New("destination repo is required")
@@ -99,33 +96,12 @@ func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydr
 	if r.TargetBranch == "" {
 		return "", "", errors.New("target branch is required")
 	}
-	if r.SyncBranch == "" {
-		return "", "", errors.New("sync branch is required")
-	}
 
 	logCtx = logCtx.WithFields(log.Fields{
 		"sourceRepo": r.SourceRepo.Repo,
 		"destRepo":   r.DestRepo.Repo,
 	})
-	logCtx.Debug("Initiating git clients")
-
-	// Initialize source repo client
-	logCtx.WithField("sourceRepo", r.SourceRepo.Repo).Debug("Creating source temp directory")
-	sourceDirPath, err := files.CreateTempDir("/tmp/_commit-service-source")
-	if err != nil {
-		logCtx.WithError(err).Error("Failed to create source temp directory")
-		return "", "", fmt.Errorf("failed to create source temp dir: %w", err)
-	}
-	logCtx.WithField("sourceDirPath", sourceDirPath).Debug("Created source temp directory")
-
-	logCtx.Debug("Initializing source git client")
-	_, sourceCleanup, err := s.initGitClient(logCtx, r.SourceRepo, sourceDirPath)
-	if err != nil {
-		logCtx.WithError(err).WithField("sourceDirPath", sourceDirPath).Error("Failed to initialize source git client")
-		return "", "", fmt.Errorf("failed to initialize source git client: %w", err)
-	}
-	logCtx.Debug("Successfully initialized source git client")
-	defer sourceCleanup()
+	logCtx.Debug("Initiating destination git client")
 
 	// Initialize destination repo client
 	destDirPath, err := files.CreateTempDir("/tmp/_commit-service-dest")
@@ -145,14 +121,15 @@ func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydr
 		return out, "", fmt.Errorf("failed to checkout target branch: %w", err)
 	}
 
-	logCtx.Debug("Clearing destination repo contents")
-	out, err = destGitClient.RemoveContents()
-	if err != nil {
-		return out, "", fmt.Errorf("failed to clear destination repo: %w", err)
+	logCtx.Debug("Clearing paths for manifests")
+	for _, path := range r.Paths {
+		if _, err := destGitClient.RemovePath(path.Path); err != nil {
+			return "", "", fmt.Errorf("failed to clear path %s: %w", path.Path, err)
+		}
 	}
 
 	logCtx.Debug("Writing manifests")
-	err = WriteForPaths(destDirPath, r.DestRepo.Repo, r.DrySha, r.Paths)
+	err = WriteForPaths(destDirPath, r.SourceRepo.Repo, r.DrySha, r.Paths)
 	if err != nil {
 		logCtx.WithError(err).WithField("destDirPath", destDirPath).Error("Failed to write manifests")
 		return "", "", fmt.Errorf("failed to write manifests: %w", err)

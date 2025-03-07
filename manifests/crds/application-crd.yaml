@@ -1447,6 +1447,10 @@ spec:
                     description: DrySource specifies where the dry "don't repeat yourself"
                       manifest source lives.
                     properties:
+                      chart:
+                        description: Chart is the name of the Helm chart to use for
+                          the application
+                        type: string
                       path:
                         description: Path is a directory path within the Git repository
                           where the manifests are located
@@ -1460,7 +1464,6 @@ spec:
                           to hydrate
                         type: string
                     required:
-                    - path
                     - repoURL
                     - targetRevision
                     type: object
@@ -4887,6 +4890,10 @@ spec:
                             description: DrySource specifies where the dry "don't
                               repeat yourself" manifest source lives.
                             properties:
+                              chart:
+                                description: Chart is the name of the Helm chart to
+                                  use for the application
+                                type: string
                               path:
                                 description: Path is a directory path within the Git
                                   repository where the manifests are located
@@ -4900,7 +4907,6 @@ spec:
                                   the source to hydrate
                                 type: string
                             required:
-                            - path
                             - repoURL
                             - targetRevision
                             type: object
@@ -4979,6 +4985,10 @@ spec:
                             description: DrySource specifies where the dry "don't
                               repeat yourself" manifest source lives.
                             properties:
+                              chart:
+                                description: Chart is the name of the Helm chart to
+                                  use for the application
+                                type: string
                               path:
                                 description: Path is a directory path within the Git
                                   repository where the manifests are located
@@ -4992,7 +5002,6 @@ spec:
                                   the source to hydrate
                                 type: string
                             required:
-                            - path
                             - repoURL
                             - targetRevision
                             type: object
