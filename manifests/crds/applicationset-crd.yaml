@@ -63,7 +63,6 @@ spec:
                                 type: string
                               type: object
                           type: object
-                          x-kubernetes-map-type: atomic
                         name:
                           type: string
                         requeueAfterSeconds:
@@ -401,9 +400,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -748,7 +752,6 @@ spec:
                                 type: string
                               type: object
                           type: object
-                          x-kubernetes-map-type: atomic
                         template:
                           properties:
                             metadata:
@@ -1081,9 +1084,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -1760,9 +1768,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -2419,9 +2432,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -2765,7 +2783,6 @@ spec:
                                           type: string
                                         type: object
                                     type: object
-                                    x-kubernetes-map-type: atomic
                                   name:
                                     type: string
                                   requeueAfterSeconds:
@@ -3103,9 +3120,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -3450,7 +3472,6 @@ spec:
                                           type: string
                                         type: object
                                     type: object
-                                    x-kubernetes-map-type: atomic
                                   template:
                                     properties:
                                       metadata:
@@ -3783,9 +3804,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -4462,9 +4488,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -5121,9 +5152,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -5788,9 +5824,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -6674,9 +6715,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -7555,9 +7601,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -7896,7 +7947,6 @@ spec:
                                       type: string
                                     type: object
                                 type: object
-                                x-kubernetes-map-type: atomic
                             type: object
                           type: array
                         template:
@@ -8231,9 +8281,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -8579,7 +8634,6 @@ spec:
                                           type: string
                                         type: object
                                     type: object
-                                    x-kubernetes-map-type: atomic
                                   name:
                                     type: string
                                   requeueAfterSeconds:
@@ -8917,9 +8971,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -9264,7 +9323,6 @@ spec:
                                           type: string
                                         type: object
                                     type: object
-                                    x-kubernetes-map-type: atomic
                                   template:
                                     properties:
                                       metadata:
@@ -9597,9 +9655,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -10276,9 +10339,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -10935,9 +11003,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -11602,9 +11675,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -12488,9 +12566,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -13369,9 +13452,14 @@ spec:
                                                 type: object
                                               hydrateTo:
                                                 properties:
+                                                  path:
+                                                    type: string
+                                                  repoURL:
+                                                    type: string
                                                   targetBranch:
                                                     type: string
                                                 required:
+                                                - repoURL
                                                 - targetBranch
                                                 type: object
                                               syncSource:
@@ -13710,7 +13798,6 @@ spec:
                                       type: string
                                     type: object
                                 type: object
-                                x-kubernetes-map-type: atomic
                             type: object
                           type: array
                         mergeKeys:
@@ -14049,9 +14136,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -14715,9 +14807,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -15601,9 +15698,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -16482,9 +16584,14 @@ spec:
                                       type: object
                                     hydrateTo:
                                       properties:
+                                        path:
+                                          type: string
+                                        repoURL:
+                                          type: string
                                         targetBranch:
                                           type: string
                                       required:
+                                      - repoURL
                                       - targetBranch
                                       type: object
                                     syncSource:
@@ -16823,7 +16930,6 @@ spec:
                             type: string
                           type: object
                       type: object
-                      x-kubernetes-map-type: atomic
                   type: object
                 type: array
               goTemplate:
@@ -17233,9 +17339,14 @@ spec:
                             type: object
                           hydrateTo:
                             properties:
+                              path:
+                                type: string
+                              repoURL:
+                                type: string
                               targetBranch:
                                 type: string
                             required:
+                            - repoURL
                             - targetBranch
                             type: object
                           syncSource:

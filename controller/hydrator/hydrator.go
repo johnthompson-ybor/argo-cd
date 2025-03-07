@@ -31,6 +31,7 @@ type Dependencies interface {
 	// TODO: only allow access to the hydrator status
 	PersistAppHydratorStatus(orig *appv1.Application, newStatus *appv1.SourceHydratorStatus)
 	AddHydrationQueueItem(key HydrationQueueKey)
+	GetRepositoryCredentials(ctx context.Context, repoURL string) (*appv1.Repository, error)
 }
 
 type Hydrator struct {
@@ -237,7 +238,13 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 	if len(apps) == 0 {
 		return "", "", nil
 	}
-	repoURL := apps[0].Spec.SourceHydrator.DrySource.RepoURL
+	// Source repo is always the DrySource.RepoURL
+	sourceRepoURL := apps[0].Spec.SourceHydrator.DrySource.RepoURL
+	// Destination repo is HydrateTo.RepoURL if specified, otherwise same as source
+	destRepoURL := sourceRepoURL
+	if apps[0].Spec.SourceHydrator.HydrateTo != nil && apps[0].Spec.SourceHydrator.HydrateTo.RepoURL != nil && *apps[0].Spec.SourceHydrator.HydrateTo.RepoURL != "" {
+		destRepoURL = *apps[0].Spec.SourceHydrator.HydrateTo.RepoURL
+	}
 	syncBranch := apps[0].Spec.SourceHydrator.SyncSource.TargetBranch
 	targetBranch := apps[0].Spec.GetHydrateToSource().TargetRevision
 	var paths []*commitclient.PathDetails
@@ -284,8 +291,14 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 			manifestDetails[i] = &commitclient.HydratedManifestDetails{ManifestJSON: string(objJSON)}
 		}
 
+		// Determine which path to use based on HydrateTo configuration
+		path := app.Spec.SourceHydrator.SyncSource.Path
+		if app.Spec.SourceHydrator.HydrateTo != nil && app.Spec.SourceHydrator.HydrateTo.Path != nil && *app.Spec.SourceHydrator.HydrateTo.Path != "" {
+			path = *app.Spec.SourceHydrator.HydrateTo.Path
+		}
+
 		paths = append(paths, &commitclient.PathDetails{
-			Path:      app.Spec.SourceHydrator.SyncSource.Path,
+			Path:      path,
 			Manifests: manifestDetails,
 			Commands:  resp.Commands,
 		})
@@ -300,20 +313,34 @@ func (h *Hydrator) hydrate(logCtx *log.Entry, apps []*appv1.Application) (string
 		}
 	}
 
-	repo, err := h.dependencies.GetWriteCredentials(context.Background(), repoURL, project)
+	// Get credentials for both source and destination repositories
+	sourceRepo, err := h.dependencies.GetRepositoryCredentials(context.Background(), sourceRepoURL)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get hydrator credentials: %w", err)
+		return "", "", fmt.Errorf("failed to get source repo credentials: %w", err)
 	}
-	if repo == nil {
+	if sourceRepo == nil {
 		// Try without credentials.
-		repo = &appv1.Repository{
-			Repo: repoURL,
+		sourceRepo = &appv1.Repository{
+			Repo: sourceRepoURL,
 		}
-		logCtx.Warn("no credentials found for repo, continuing without credentials")
+		logCtx.Warn("no credentials found for source repo, continuing without credentials")
+	}
+
+	destRepo, err := h.dependencies.GetWriteCredentials(context.Background(), destRepoURL, project)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get destination repo credentials: %w", err)
+	}
+	if destRepo == nil {
+		// Try without credentials.
+		destRepo = &appv1.Repository{
+			Repo: destRepoURL,
+		}
+		logCtx.Warn("no credentials found for destination repo, continuing without credentials")
 	}
 
 	manifestsRequest := commitclient.CommitHydratedManifestsRequest{
-		Repo:          repo,
+		SourceRepo:    sourceRepo,
+		DestRepo:      destRepo,
 		SyncBranch:    syncBranch,
 		TargetBranch:  targetBranch,
 		DrySha:        targetRevision,

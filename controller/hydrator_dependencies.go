@@ -66,6 +66,10 @@ func (ctrl *ApplicationController) GetWriteCredentials(ctx context.Context, repo
 	return ctrl.db.GetWriteRepository(ctx, repoURL, project)
 }
 
+func (ctrl *ApplicationController) GetRepositoryCredentials(ctx context.Context, repoURL string) (*appv1.Repository, error) {
+	return ctrl.db.GetRepository(ctx, repoURL, "")
+}
+
 func (ctrl *ApplicationController) RequestAppRefresh(appName string, appNamespace string) error {
 	// We request a refresh by setting the annotation instead of by adding it to the refresh queue, because there is no
 	// guarantee that the hydrator is running on the same controller shard as is processing the application.

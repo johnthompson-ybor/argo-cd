@@ -11,6 +11,7 @@ import (
 
 	"github.com/argoproj/argo-cd/v3/commitserver/apiclient"
 	"github.com/argoproj/argo-cd/v3/commitserver/metrics"
+	"github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/argo-cd/v3/util/git"
 	"github.com/argoproj/argo-cd/v3/util/io/files"
 )
@@ -42,8 +43,8 @@ func (s *Service) CommitHydratedManifests(_ context.Context, r *apiclient.Commit
 	// We validate for a nil repo in handleCommitRequest, but we need to check for a nil repo here to get the repo URL
 	// for metrics.
 	var repoURL string
-	if r.Repo != nil {
-		repoURL = r.Repo.Repo
+	if r.DestRepo != nil {
+		repoURL = r.DestRepo.Repo
 	}
 
 	var err error
@@ -58,7 +59,12 @@ func (s *Service) CommitHydratedManifests(_ context.Context, r *apiclient.Commit
 		s.metricsServer.ObserveCommitRequestDuration(repoURL, commitResponseType, time.Since(startTime))
 	}()
 
-	logCtx := log.WithFields(log.Fields{"branch": r.TargetBranch, "drySHA": r.DrySha})
+	logCtx := log.WithFields(log.Fields{
+		"branch":     r.TargetBranch,
+		"drySHA":     r.DrySha,
+		"sourceRepo": r.SourceRepo.Repo,
+		"destRepo":   r.DestRepo.Repo,
+	})
 
 	out, sha, err := s.handleCommitRequest(logCtx, r)
 	if err != nil {
@@ -78,11 +84,17 @@ func (s *Service) CommitHydratedManifests(_ context.Context, r *apiclient.Commit
 // target branch, clears the repository contents, writes the manifests to the repository, commits the changes, and pushes
 // the changes. It returns the output of the git commands and an error if one occurred.
 func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydratedManifestsRequest) (string, string, error) {
-	if r.Repo == nil {
-		return "", "", errors.New("repo is required")
+	if r.SourceRepo == nil {
+		return "", "", errors.New("source repo is required")
 	}
-	if r.Repo.Repo == "" {
-		return "", "", errors.New("repo URL is required")
+	if r.SourceRepo.Repo == "" {
+		return "", "", errors.New("source repo URL is required")
+	}
+	if r.DestRepo == nil {
+		return "", "", errors.New("destination repo is required")
+	}
+	if r.DestRepo.Repo == "" {
+		return "", "", errors.New("destination repo URL is required")
 	}
 	if r.TargetBranch == "" {
 		return "", "", errors.New("target branch is required")
@@ -91,62 +103,84 @@ func (s *Service) handleCommitRequest(logCtx *log.Entry, r *apiclient.CommitHydr
 		return "", "", errors.New("sync branch is required")
 	}
 
-	logCtx = logCtx.WithField("repo", r.Repo.Repo)
-	logCtx.Debug("Initiating git client")
-	gitClient, dirPath, cleanup, err := s.initGitClient(logCtx, r)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to init git client: %w", err)
-	}
-	defer cleanup()
+	logCtx = logCtx.WithFields(log.Fields{
+		"sourceRepo": r.SourceRepo.Repo,
+		"destRepo":   r.DestRepo.Repo,
+	})
+	logCtx.Debug("Initiating git clients")
 
-	logCtx.Debugf("Checking out sync branch %s", r.SyncBranch)
-	var out string
-	out, err = gitClient.CheckoutOrOrphan(r.SyncBranch, false)
+	// Initialize source repo client
+	logCtx.WithField("sourceRepo", r.SourceRepo.Repo).Debug("Creating source temp directory")
+	sourceDirPath, err := files.CreateTempDir("/tmp/_commit-service-source")
 	if err != nil {
-		return out, "", fmt.Errorf("failed to checkout sync branch: %w", err)
+		logCtx.WithError(err).Error("Failed to create source temp directory")
+		return "", "", fmt.Errorf("failed to create source temp dir: %w", err)
 	}
+	logCtx.WithField("sourceDirPath", sourceDirPath).Debug("Created source temp directory")
+
+	logCtx.Debug("Initializing source git client")
+	_, sourceCleanup, err := s.initGitClient(logCtx, r.SourceRepo, sourceDirPath)
+	if err != nil {
+		logCtx.WithError(err).WithField("sourceDirPath", sourceDirPath).Error("Failed to initialize source git client")
+		return "", "", fmt.Errorf("failed to initialize source git client: %w", err)
+	}
+	logCtx.Debug("Successfully initialized source git client")
+	defer sourceCleanup()
+
+	// Initialize destination repo client
+	destDirPath, err := files.CreateTempDir("/tmp/_commit-service-dest")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create destination temp dir: %w", err)
+	}
+	destGitClient, destCleanup, err := s.initGitClient(logCtx, r.DestRepo, destDirPath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to initialize destination git client: %w", err)
+	}
+	defer destCleanup()
 
 	logCtx.Debugf("Checking out target branch %s", r.TargetBranch)
-	out, err = gitClient.CheckoutOrNew(r.TargetBranch, r.SyncBranch, false)
+	var out string
+	out, err = destGitClient.CheckoutOrOrphan(r.TargetBranch, false)
 	if err != nil {
 		return out, "", fmt.Errorf("failed to checkout target branch: %w", err)
 	}
 
-	logCtx.Debug("Clearing repo contents")
-	out, err = gitClient.RemoveContents()
+	logCtx.Debug("Clearing destination repo contents")
+	out, err = destGitClient.RemoveContents()
 	if err != nil {
-		return out, "", fmt.Errorf("failed to clear repo: %w", err)
+		return out, "", fmt.Errorf("failed to clear destination repo: %w", err)
 	}
 
 	logCtx.Debug("Writing manifests")
-	err = WriteForPaths(dirPath, r.Repo.Repo, r.DrySha, r.Paths)
+	err = WriteForPaths(destDirPath, r.DestRepo.Repo, r.DrySha, r.Paths)
 	if err != nil {
+		logCtx.WithError(err).WithField("destDirPath", destDirPath).Error("Failed to write manifests")
 		return "", "", fmt.Errorf("failed to write manifests: %w", err)
 	}
 
-	logCtx.Debug("Committing and pushing changes")
-	out, err = gitClient.CommitAndPush(r.TargetBranch, r.CommitMessage)
+	logCtx.WithFields(log.Fields{
+		"targetBranch":  r.TargetBranch,
+		"commitMessage": r.CommitMessage,
+	}).Debug("Committing and pushing changes")
+	out, err = destGitClient.CommitAndPush(r.TargetBranch, r.CommitMessage)
 	if err != nil {
+		logCtx.WithError(err).WithField("output", out).Error("Failed to commit and push changes")
 		return out, "", fmt.Errorf("failed to commit and push: %w", err)
 	}
 
 	logCtx.Debug("Getting commit SHA")
-	sha, err := gitClient.CommitSHA()
+	sha, err := destGitClient.CommitSHA()
 	if err != nil {
+		logCtx.WithError(err).Error("Failed to get commit SHA")
 		return "", "", fmt.Errorf("failed to get commit SHA: %w", err)
 	}
 
+	logCtx.WithField("hydratedSHA", sha).Info("Successfully completed commit process")
 	return "", sha, nil
 }
 
-// initGitClient initializes a git client for the given repository and returns the client, the path to the directory where
-// the repository is cloned, a cleanup function that should be called when the directory is no longer needed, and an error
-// if one occurred.
-func (s *Service) initGitClient(logCtx *log.Entry, r *apiclient.CommitHydratedManifestsRequest) (git.Client, string, func(), error) {
-	dirPath, err := files.CreateTempDir("/tmp/_commit-service")
-	if err != nil {
-		return nil, "", nil, fmt.Errorf("failed to create temp dir: %w", err)
-	}
+// initGitClient initializes a git client for the given repository and returns the client, a cleanup function that should be called when the directory is no longer needed, and an error if one occurred.
+func (s *Service) initGitClient(logCtx *log.Entry, repo *v1alpha1.Repository, dirPath string) (git.Client, func(), error) {
 	// Call cleanupOrLog in this function if an error occurs to ensure the temp dir is cleaned up.
 	cleanupOrLog := func() {
 		err := os.RemoveAll(dirPath)
@@ -155,35 +189,35 @@ func (s *Service) initGitClient(logCtx *log.Entry, r *apiclient.CommitHydratedMa
 		}
 	}
 
-	gitClient, err := s.repoClientFactory.NewClient(r.Repo, dirPath)
+	gitClient, err := s.repoClientFactory.NewClient(repo, dirPath)
 	if err != nil {
 		cleanupOrLog()
-		return nil, "", nil, fmt.Errorf("failed to create git client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create git client: %w", err)
 	}
 
-	logCtx.Debugf("Initializing repo %s", r.Repo.Repo)
+	logCtx.Debugf("Initializing repo %s", repo.Repo)
 	err = gitClient.Init()
 	if err != nil {
 		cleanupOrLog()
-		return nil, "", nil, fmt.Errorf("failed to init git client: %w", err)
+		return nil, nil, fmt.Errorf("failed to init git client: %w", err)
 	}
 
-	logCtx.Debugf("Fetching repo %s", r.Repo.Repo)
+	logCtx.Debugf("Fetching repo %s", repo.Repo)
 	err = gitClient.Fetch("")
 	if err != nil {
 		cleanupOrLog()
-		return nil, "", nil, fmt.Errorf("failed to clone repo: %w", err)
+		return nil, nil, fmt.Errorf("failed to clone repo: %w", err)
 	}
 
 	// FIXME: make it work for GHE
 	// logCtx.Debugf("Getting user info for repo credentials")
-	// gitCreds := r.Repo.GetGitCreds(s.gitCredsStore)
+	// gitCreds := repo.GetGitCreds(s.gitCredsStore)
 	// startTime := time.Now()
 	// authorName, authorEmail, err := gitCreds.GetUserInfo(ctx)
-	// s.metricsServer.ObserveUserInfoRequestDuration(r.Repo.Repo, getCredentialType(r.Repo), time.Since(startTime))
+	// s.metricsServer.ObserveUserInfoRequestDuration(repo.Repo, getCredentialType(repo), time.Since(startTime))
 	// if err != nil {
 	//	 cleanupOrLog()
-	//	 return nil, "", nil, fmt.Errorf("failed to get github app info: %w", err)
+	//	 return nil, nil, fmt.Errorf("failed to get github app info: %w", err)
 	// }
 	var authorName, authorEmail string
 
@@ -199,10 +233,10 @@ func (s *Service) initGitClient(logCtx *log.Entry, r *apiclient.CommitHydratedMa
 	_, err = gitClient.SetAuthor(authorName, authorEmail)
 	if err != nil {
 		cleanupOrLog()
-		return nil, "", nil, fmt.Errorf("failed to set author: %w", err)
+		return nil, nil, fmt.Errorf("failed to set author: %w", err)
 	}
 
-	return gitClient, dirPath, cleanupOrLog, nil
+	return gitClient, cleanupOrLog, nil
 }
 
 type hydratorMetadataFile struct {

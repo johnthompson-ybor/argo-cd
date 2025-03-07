@@ -442,6 +442,10 @@ type SyncSource struct {
 type HydrateTo struct {
 	// TargetBranch is the branch to which hydrated manifests should be committed
 	TargetBranch string `json:"targetBranch" protobuf:"bytes,1,name=targetBranch"`
+	// RepoURL is the URL to the git repository where hydrated manifests should be pushed
+	RepoURL *string `json:"repoURL" protobuf:"bytes,2,name=repoURL"`
+	// Path is the directory path within the Git repository where hydrated manifests should be committed
+	Path *string `json:"path,omitempty" protobuf:"bytes,3,opt,name=path"`
 }
 
 // DeepEquals returns true if the HydrateTo is deeply equal to the given HydrateTo.
